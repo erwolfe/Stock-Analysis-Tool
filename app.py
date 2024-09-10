@@ -1,53 +1,28 @@
-import pandas as pd
-from financialModelingPrep import api
-from stocks import Stock
 import os
+import pandas as pd
+from stocks import Stock
+import secFilingAPI
+import requests
 
-if input("Use cached financial data? (y/n): ").upper() == "Y":
-    useCached = True
-else:
-    useCached = False
-
-while True:
+# Clear previous temp files
+for file in ['data.json', '10KQ.txt']:
     try:
-        number_of_stocks = int(input("Enter quantity of stocks to be compared: "))
-        if number_of_stocks <= 0:
-            print("    <!> Qty of stocks must be > 0")
-            continue
-        else:
-            break
-    except:
-        print("    <!> Qty of stocks must be an integer value")
-        continue
+        os.remove(f'temp/{file}')
+    except FileNotFoundError:
+        pass
 
-stocks = []
-for i in range(number_of_stocks):
-    symbol = input(f"Enter stock #{i + 1}'s ticker symbol: ").upper()
-    stocks.append(Stock(symbol))
 
-fmp = api(os.environ.get("financialModelingPrep_API_Key"))
 
-for stock in stocks:
-    if useCached:
-        try:
-            stock.financial_data = pd.read_csv(f"{stock.symbol}_financial-data_annual.csv")
-            stock.financial_data.set_index("Unnamed: 0", inplace=True)
-        except:
-            stock.financial_data = fmp.getStatement(stocks[i].symbol, "financial-statement-full-as-reported", "annual")
-            pd.DataFrame.to_csv(stocks[i].financial_data, f"{stocks[i].symbol}_financial-data_annual.csv")
+dl = secFilingAPI.Downloader(user_agent=os.environ.get('sec-user-agent'), cik_map_path='temp/ticker_cik_map.csv', update_cik_map=False)
 
-    
-    
-for s in stocks:
-    """
-    print(s.financial_data.head())
-    print(s.financial_data.columns)
-    print(s.financial_data.index)
-    """
-    symbol = s.symbol
-    column = s.financial_data.columns[0]
-    se = s.financial_data.at["stockholdersequity", column]
-    ni = s.financial_data.at["netincomeloss", column]
-    roe = s.return_on_equity()
-    roa = s.return_on_assets()
-    print(f"Symbol: {symbol}\nStockholder's Equity: {se}\nNet Income: {ni}\nROE: {roe}\nROA: {roa}\n")
+ticker_symbol = input("Enter ticker symbol [exit with 'exit()']: ")
+
+data = dl.get_data_ticker(ticker_symbol)
+details_10KQ = dl.latest_10KQ_details(data)
+
+print(details_10KQ)
+
+response = requests.get(f'https://www.sec.gov/Archives/edgar/data/{details_10KQ["cik"]}/{details_10KQ["accession_num"]}.txt', headers=dl.request_headers)
+
+with open('temp/10KQ.txt', 'w') as f:
+    f.write(response.text())

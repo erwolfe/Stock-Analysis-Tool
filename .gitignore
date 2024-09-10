@@ -1,3 +1,4 @@
 *.csv
 temp/
 ignore/
+__pycache__/

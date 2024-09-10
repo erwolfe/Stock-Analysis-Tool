@@ -34,7 +34,7 @@ class Downloader:
         cik_df['cik_str'] = cik_df['cik_str'].astype(str).str.zfill(10)
 
         # Save new map to local .csv
-        cik_df.to_csv('ticker_cik_map.csv')
+        cik_df.to_csv('temp/ticker_cik_map.csv')
 
         return cik_df
 
@@ -42,7 +42,7 @@ class Downloader:
         # Loads the locally stored ticker -> CIK map from a .csv file
 
         # DataFrame setup
-        cik_df = pd.read_csv('ticker_cik_map.csv')
+        cik_df = pd.read_csv('temp/ticker_cik_map.csv')
         cik_df.set_index('ticker', inplace=True)
 
         # Add leading zeros to 'cik_str' (10 digits to comply with sec API requirements)
@@ -53,49 +53,45 @@ class Downloader:
     def get_cik(self, ticker:str) -> str:
         return self.cik_map.loc[ticker.upper(), 'cik_str']
 
-    def get_data(self, cik:str):
+    def get_data(self, cik:str) -> dict:
         endpoint = f'{self.base_url}CIK{cik}.json'
         response = requests.get(
             endpoint,
             headers=self.request_headers
         )
 
-        return response.json()
+        json_response = response.json()
 
-    def get_data_ticker(self, ticker:str) -> json:
+        with open('temp/data.json', 'w') as f:
+            f.write(json.dumps(json_response, indent=4))
+
+        return json_response
+
+    def get_data_ticker(self, ticker:str) -> dict:
         cik = self.get_cik(ticker)
         data = self.get_data(cik)
 
         return data
 
+    def latest_10KQ_details(self, data:dict) -> dict:
+        # Finds the details (including accession number) of the latest 10-Q or 10-K (whichever is more recent) for the given json data
+        # return format: {
+        #     'form': form type (10-K or 10-Q)
+        #     'date': reporting date for the form
+        #     'accession_num': unique accession number for retrieving form from SEC EDGAR database
+        # }
 
-dl = Downloader(user_agent="erwolfe40@gmail.com", cik_map_path='ticker_cik_map.csv', update_cik_map=False)
+        # All 'recent filings' included in the SEC json data
+        recent_filings = data['filings']['recent']
 
-ticker_symbol = input("Enter ticker symbol [exit with 'exit()']: ")
-"""
-while str(ticker_symbol).lower() != "exit()":
-    
-    try:
-        cik = dl.get_cik(ticker_symbol)
-        print(cik)
-    except KeyError:
-        print('Ticker or command not found')
-    
-    ticker_symbol = input("Enter ticker symbol [exit with 'exit()']: ")
-"""
+        # Values are lists of their respective attribute values
+        cik = data['cik']
+        accession_numbers = recent_filings['accessionNumber']
+        forms = recent_filings['form']
+        report_dates = recent_filings['reportDate']
 
-data = dl.get_data_ticker(ticker_symbol)
+        # Form dictionary of details for latest 10-K or 10-Q
+        # Get only values in accession_numbers and report_dates lists where forms list == '10-K' or '10-Q'
+        latest_10QK = [{'cik': cik, 'form': form, 'date': date, 'accession_num': accession} for date, accession, form in zip(report_dates, accession_numbers, forms) if form == "10-Q" or form == "10-K"][:1]
 
-recent_filings = data['filings']['recent']
-
-accession_numbers = recent_filings['accessionNumber']
-forms = recent_filings['form']
-report_dates = recent_filings['reportDate']
-
-recent10qs = [{'form': form, 'date': date, 'accession_num': accession} for date, accession, form in zip(report_dates, accession_numbers, forms) if form == "10-Q" or form == "10-K"][:4]
-
-latest_accession = recent10qs[0]['accession_num']
-cik = dl.get_cik(ticker_symbol)
-response = requests.get(f'https://www.sec.gov/Archives/edgar/data/{cik}/{latest_accession}.txt', headers=dl.request_headers)
-print(latest_accession, cik)
-
+        return latest_10QK
