@@ -1,3 +1,4 @@
+import os
 import requests
 import pandas as pd
 import json
@@ -34,6 +35,8 @@ class Downloader:
         cik_df['cik_str'] = cik_df['cik_str'].astype(str).str.zfill(10)
 
         # Save new map to local .csv
+        if not os.path.exists('temp/'):
+            os.mkdir('temp/')
         cik_df.to_csv('temp/ticker_cik_map.csv')
 
         return cik_df
@@ -90,8 +93,8 @@ class Downloader:
         forms = recent_filings['form']
         report_dates = recent_filings['reportDate']
 
-        # Form dictionary of details for latest 10-K or 10-Q
+        # Create new dictionary with details for latest 10-K or 10-Q
         # Get only values in accession_numbers and report_dates lists where forms list == '10-K' or '10-Q'
-        latest_10QK = [{'cik': cik, 'form': form, 'date': date, 'accession_num': accession} for date, accession, form in zip(report_dates, accession_numbers, forms) if form == "10-Q" or form == "10-K"][:1]
+        latest_10QK = [{'cik': cik, 'form': form, 'date': date, 'accession_num': accession} for date, accession, form in zip(report_dates, accession_numbers, forms) if form == "10-Q" or form == "10-K"][0]
 
         return latest_10QK
