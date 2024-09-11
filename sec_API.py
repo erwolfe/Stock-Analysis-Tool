@@ -3,11 +3,11 @@ import requests
 import pandas as pd
 import json
 
-class Downloader:
+class Edgar:
 
     def __init__(self, user_agent:str, cik_map_path:str, update_cik_map:bool = True) -> None:
         self.request_headers = {'User-Agent': user_agent}
-        self.base_url = 'https://data.sec.gov/submissions/'
+        self.base_url = 'https://data.sec.gov/'
         self.cik_map = None
 
         if update_cik_map:
@@ -54,47 +54,34 @@ class Downloader:
         return cik_df
 
     def get_cik(self, ticker:str) -> str:
-        return self.cik_map.loc[ticker.upper(), 'cik_str']
+        
+        cik = str(self.cik_map.loc[ticker.upper(), 'cik_str']).zfill(10)
+        
+        return cik
 
-    def get_data(self, cik:str) -> dict:
-        endpoint = f'{self.base_url}CIK{cik}.json'
-        response = requests.get(
+    def get_ticker_submissions(self, ticker:str, filings_only:bool = False) -> (pd.DataFrame | dict):
+        cik = self.get_cik(ticker)
+        endpoint = f'{self.base_url}submissions/CIK{cik}.json'
+        response_json = requests.get(
             endpoint,
             headers=self.request_headers
-        )
-
-        json_response = response.json()
+        ).json()
 
         with open('temp/data.json', 'w') as f:
-            f.write(json.dumps(json_response, indent=4))
+            f.write(json.dumps(response_json, indent=4))
 
-        return json_response
+        if filings_only:
+            df = pd.DataFrame(response_json['filings']['recent'])
+            df['accessionNumber'] = df['accessionNumber'].apply(lambda acc: acc.replace('-', ''))
+            return df
+        return response_json
 
-    def get_data_ticker(self, ticker:str) -> dict:
-        cik = self.get_cik(ticker)
-        data = self.get_data(cik)
+    def filter_filings_by_form(self, filings:pd.DataFrame, include_forms:list, number_of_filings:int = 0) -> pd.DataFrame:
+        df = filings[filings['form'].isin(include_forms)]
 
-        return data
+        if not number_of_filings == 0:
+            df = df.head(number_of_filings)
+            
+        df.reset_index(inplace=True, drop=True)
+        return df
 
-    def latest_10KQ_details(self, data:dict) -> dict:
-        # Finds the details (including accession number) of the latest 10-Q or 10-K (whichever is more recent) for the given json data
-        # return format: {
-        #     'form': form type (10-K or 10-Q)
-        #     'date': reporting date for the form
-        #     'accession_num': unique accession number for retrieving form from SEC EDGAR database
-        # }
-
-        # All 'recent filings' included in the SEC json data
-        recent_filings = data['filings']['recent']
-
-        # Values are lists of their respective attribute values
-        cik = data['cik']
-        accession_numbers = recent_filings['accessionNumber']
-        forms = recent_filings['form']
-        report_dates = recent_filings['reportDate']
-
-        # Create new dictionary with details for latest 10-K or 10-Q
-        # Get only values in accession_numbers and report_dates lists where forms list == '10-K' or '10-Q'
-        latest_10QK = [{'cik': cik, 'form': form, 'date': date, 'accession_num': accession} for date, accession, form in zip(report_dates, accession_numbers, forms) if form == "10-Q" or form == "10-K"][0]
-
-        return latest_10QK

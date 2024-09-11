@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from stocks import Stock
-import secFilingAPI
+import sec_API
 import requests
 
 # Clear previous temp files
@@ -11,16 +11,17 @@ for file in ['data.json', '10KQ.txt']:
     except FileNotFoundError:
         pass
 
-dl = secFilingAPI.Downloader(user_agent=os.environ.get('sec-user-agent'), cik_map_path='temp/ticker_cik_map.csv', update_cik_map=False)
+sec = sec_API.Edgar(user_agent=os.environ.get('sec-user-agent'), cik_map_path='temp/ticker_cik_map.csv', update_cik_map=False)
 
 ticker_symbol = input("Enter ticker symbol [exit with 'exit()']: ")
 
-data = dl.get_data_ticker(ticker_symbol)
-details_10KQ = dl.latest_10KQ_details(data)
+filings_df = sec.get_ticker_submissions(ticker_symbol, filings_only=True)
+filings_df = sec.filter_filings_by_form(filings_df, ['10-K'], number_of_filings=1)
 
-print(details_10KQ)
+response = requests.get(f'https://www.sec.gov/Archives/edgar/data/{sec.get_cik(ticker_symbol)}/{filings_df.at[0, "accessionNumber"]}', headers=sec.request_headers)
 
-response = requests.get(f'https://www.sec.gov/Archives/edgar/data/{details_10KQ["cik"]}/{details_10KQ["accession_num"]}.txt', headers=dl.request_headers)
-
-with open('temp/10KQ.txt', 'w') as f:
+with open('temp/10kq.txt', 'w') as f:
     f.write(response.text)
+
+# Scraping financial statemnts from SEC EDGAR with Python
+# https://www.youtube.com/watch?v=gpvG9vYBzwc
