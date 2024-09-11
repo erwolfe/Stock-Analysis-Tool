@@ -59,7 +59,7 @@ class Edgar:
         
         return cik
 
-    def get_ticker_submissions(self, ticker:str, filings_only:bool = False) -> (pd.DataFrame | dict):
+    def get_ticker_submissions(self, ticker:str, filings_only:bool = False, clean_accession:bool = False) -> (pd.DataFrame | dict):
         cik = self.get_cik(ticker)
         endpoint = f'{self.base_url}submissions/CIK{cik}.json'
         response_json = requests.get(
@@ -72,7 +72,8 @@ class Edgar:
 
         if filings_only:
             df = pd.DataFrame(response_json['filings']['recent'])
-            df['accessionNumber'] = df['accessionNumber'].apply(lambda acc: acc.replace('-', ''))
+            if clean_accession:
+                df['accessionNumber'] = df['accessionNumber'].apply(lambda acc: acc.replace('-', ''))
             return df
         return response_json
 

@@ -18,7 +18,11 @@ ticker_symbol = input("Enter ticker symbol [exit with 'exit()']: ")
 filings_df = sec.get_ticker_submissions(ticker_symbol, filings_only=True)
 filings_df = sec.filter_filings_by_form(filings_df, ['10-K'], number_of_filings=1)
 
-response = requests.get(f'https://www.sec.gov/Archives/edgar/data/{sec.get_cik(ticker_symbol)}/{filings_df.at[0, "accessionNumber"]}', headers=sec.request_headers)
+endpoint = f'https://www.sec.gov/Archives/edgar/data/{sec.get_cik(ticker_symbol)}/{filings_df.at[0, "accessionNumber"]}.txt'
+
+open('temp/edgar_endpoint.txt', 'w').write(endpoint)
+
+response = requests.get(endpoint, headers=sec.request_headers)
 
 with open('temp/10kq.txt', 'w') as f:
     f.write(response.text)
