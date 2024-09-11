@@ -3,6 +3,7 @@ import pandas as pd
 from stocks import Stock
 import sec_API
 import requests
+from bs4 import BeautifulSoup
 
 # Clear previous temp files
 for file in ['data.json', '10KQ.txt']:
