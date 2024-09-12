@@ -50,7 +50,7 @@ class Edgar:
                     form,
                     ticker,
                     report_date,
-                    cik
+                    cik,
                 )
             )
 
@@ -153,7 +153,8 @@ class Filing:
             'form': form,
             'ticker': ticker,
             'cik': cik,
-            'report_date': report_date
+            'report_date': report_date,
+            'archives_url': f'{self.base_url}{cik}/{accession}'
         }
 
         self.reports = []
