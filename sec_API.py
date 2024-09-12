@@ -2,6 +2,7 @@ import os
 import json
 import requests
 import pandas as pd
+from io import StringIO
 from bs4 import BeautifulSoup
 
 class Edgar:
@@ -169,7 +170,17 @@ class Edgar:
             headers=self.request_headers
         ).content.decode('utf-8')
 
-        statement_soup = BeautifulSoup(response, 'html.parser')
+        statement_soup = BeautifulSoup(response, 'lxml')
+        table = statement_soup.find('table', class_='report')
+        table_df = pd.read_html(StringIO(str(table)))[0]
+
+        table_df.set_index(table_df.columns[0], inplace=True, drop=True)
+        table_df.index.name = ''
+
+        open('temp/report.html', 'w').write(table.text)
+        table_df.to_csv(f'temp/{statement}.csv', encoding='utf-8')
+
+        return table_df
 
 class Filing:
     base_url = 'https://www.sec.gov/Archives/edgar/data/'

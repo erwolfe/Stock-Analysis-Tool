@@ -18,11 +18,10 @@ filings = sec.filter_filings_by_form(edgar.get_ticker_filings(ticker), ['10-K'])
 filing = filings[0]
 print(filing.details['archives_url'])
 
-reports = edgar.get_filing_reports(filing)
+edgar.get_filing_reports(filing)
 print
 
-filter_list = ['income_statement', 'balance_sheet']
-filtered_reports = [report for report in reports if any(key in report for key in filter_list)]
+balance_sheet = edgar.get_statement(filing, 'balance_sheet')
 
 
 #print(reports)
