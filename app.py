@@ -8,6 +8,7 @@ for file in ['submissions.json', 'FilingSummary.txt']:
     except FileNotFoundError:
         pass
 
+
 edgar = sec.Edgar(user_agent=os.environ.get('sec-user-agent'))
 
 ticker = input("Enter ticker symbol [exit with 'exit()']: ")
@@ -18,11 +19,11 @@ filing = filings[0]
 print(filing.details['archives_url'])
 
 reports = edgar.get_filing_reports(filing)
+print
 
-filter_list = ['Consolidated Statements of Comprehensive Income', 'Consolidated Balance Sheets']
+filter_list = ['income_statement', 'balance_sheet']
 filtered_reports = [report for report in reports if any(key in report for key in filter_list)]
 
 
-print(filtered_reports)
 #print(reports)
 #edgar.get_statement_location(ticker_symbol, latest_filing.at[0, 'accessionNumber'])

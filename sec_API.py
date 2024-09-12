@@ -129,7 +129,20 @@ class Edgar:
             html_name = report.find('HtmlFileName')
 
             if name:
-                short_names.append(name.text)
+
+                # Get key value from statement_keys_map
+                try:
+                    if reverse_statement_map[str(name.text).upper()] in short_names:
+                        standard_name = f'{reverse_statement_map[str(name.text).upper()]}_'
+                    else:
+                        standard_name = reverse_statement_map[str(name.text).upper()]
+                    
+                except KeyError:
+                    standard_name = str(name.text)
+                    
+                
+                
+                short_names.append(standard_name)
             else:
                 short_names.append('')
 
@@ -143,6 +156,20 @@ class Edgar:
         filing.reports = reports
 
         return filing.reports
+    
+    def get_statement(self, filing:'Filing', statement:str) -> pd.DataFrame:
+        file_name = None
+        for report in filing.reports:
+            if statement in report:
+                file_name = report[statement]
+
+        address = f'{filing.details["archives_url"]}/{file_name}'
+        response = requests.get(
+            address,
+            headers=self.request_headers
+        ).content.decode('utf-8')
+
+        statement_soup = BeautifulSoup(response, 'html.parser')
 
 class Filing:
     base_url = 'https://www.sec.gov/Archives/edgar/data/'
@@ -158,7 +185,6 @@ class Filing:
         }
 
         self.reports = []
-
 
 class Report:
     def __init__(self, name = None, html_file_name = None):
@@ -223,8 +249,7 @@ statement_keys_map = {
         "consolidated results of operations",
         "consolidated statements of income (loss)",
         "consolidated statements of income - southern",
-        "consolidated statements of operations and comprehensive income",
-        "consolidated statements of comprehensive income",
+        "consolidated statements of operations and comprehensive income"
     ],
     "cash_flow_statement": [
         "cash flows statement",
@@ -241,3 +266,5 @@ statement_keys_map = {
         "consolidated statements of cash flows - southern",
     ],
 }
+
+reverse_statement_map = {value.upper(): key for key, values in statement_keys_map.items() for value in values}
