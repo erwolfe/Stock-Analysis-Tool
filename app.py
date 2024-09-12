@@ -1,32 +1,24 @@
 import os
-import pandas as pd
-from stocks import Stock
-import sec_API
-import requests
-from bs4 import BeautifulSoup
+import sec_API as sec
 
 # Clear previous temp files
-for file in ['data.json', '10KQ.txt']:
+for file in ['submissions.json', 'FilingSummary.txt']:
     try:
         os.remove(f'temp/{file}')
     except FileNotFoundError:
         pass
 
-sec = sec_API.Edgar(user_agent=os.environ.get('sec-user-agent'), cik_map_path='temp/ticker_cik_map.csv', update_cik_map=False)
+edgar = sec.Edgar(user_agent=os.environ.get('sec-user-agent'))
 
-ticker_symbol = input("Enter ticker symbol [exit with 'exit()']: ")
+ticker = input("Enter ticker symbol [exit with 'exit()']: ")
 
-filings_df = sec.get_ticker_submissions(ticker_symbol, filings_only=True)
-filings_df = sec.filter_filings_by_form(filings_df, ['10-K'], number_of_filings=1)
+filings = sec.filter_filings_by_form(edgar.get_ticker_filings(ticker), ['10-K'])
+reports = edgar.get_filing_reports(filings[0])
 
-endpoint = f'https://www.sec.gov/Archives/edgar/data/{sec.get_cik(ticker_symbol)}/{filings_df.at[0, "accessionNumber"]}.txt'
+filter_list = ['Consolidated Statements of Comprehensive Income', 'Consolidated Balance Sheets']
+filtered_reports = [report for report in reports if any(key in report for key in filter_list)]
 
-open('temp/edgar_endpoint.txt', 'w').write(endpoint)
 
-response = requests.get(endpoint, headers=sec.request_headers)
-
-with open('temp/10kq.txt', 'w') as f:
-    f.write(response.text)
-
-# Scraping financial statemnts from SEC EDGAR with Python
-# https://www.youtube.com/watch?v=gpvG9vYBzwc
+print(filtered_reports)
+#print(reports)
+#edgar.get_statement_location(ticker_symbol, latest_filing.at[0, 'accessionNumber'])
