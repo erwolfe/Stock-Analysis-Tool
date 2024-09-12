@@ -1,28 +1,17 @@
 import os
+import json
 import sec_API as sec
 
-# Clear previous temp files
-for file in ['submissions.json', 'FilingSummary.txt']:
-    try:
-        os.remove(f'temp/{file}')
-    except FileNotFoundError:
-        pass
-
-
+#Create edgar downloader
 edgar = sec.Edgar(user_agent=os.environ.get('sec-user-agent'))
 
-ticker = input("Enter ticker symbol [exit with 'exit()']: ")
+ticker = input("Enter ticker symbol: ")
 
-filings = sec.filter_filings_by_form(edgar.get_ticker_filings(ticker), ['10-K'])
+comp = edgar.get_compnay_by_ticker(ticker)
 
-filing = filings[0]
-print(filing.details['archives_url'])
+gaap = comp.us_gaap
 
-edgar.get_filing_reports(filing)
-print
+accts_payable = gaap.loc['AccountsPayableCurrent', 'units']
+net_income = gaap.loc['NetIncomeLoss', 'units']
 
-balance_sheet = edgar.get_statement(filing, 'balance_sheet')
-
-
-#print(reports)
-#edgar.get_statement_location(ticker_symbol, latest_filing.at[0, 'accessionNumber'])
+open('temp/accounts_payable.json', 'w').write(json.dumps(accts_payable['USD'], indent=2))
