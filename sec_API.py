@@ -68,8 +68,7 @@ class Company:
     def us_gaap(self) -> pd.DataFrame:
         if self._us_gaap is None:
             us_gaap_json = self.facts['facts']['us-gaap']
-            df = pd.DataFrame.from_dict(us_gaap_json).T
-            self._us_gaap = df
+            self._us_gaap = us_gaap_json
         return self._us_gaap
         
 
