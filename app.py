@@ -9,9 +9,6 @@ ticker = input("Enter ticker symbol: ")
 
 comp = edgar.get_compnay_by_ticker(ticker)
 
-gaap = comp.us_gaap
+filings_df = comp.filings
 
-accts_payable = gaap.loc['AccountsPayableCurrent', 'units']
-net_income = gaap.loc['NetIncomeLoss', 'units']
-
-open('temp/accounts_payable.json', 'w').write(json.dumps(accts_payable['USD'], indent=2))
+filings_df.to_csv(f'temp/{comp.ticker}_filings.csv')

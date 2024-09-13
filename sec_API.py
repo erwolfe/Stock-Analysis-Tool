@@ -56,6 +56,7 @@ class Company:
         self.edgar=edgar
         self._facts = None
         self._us_gaap = None
+        self._filings = None
 
     @property
     def facts(self):
@@ -65,10 +66,27 @@ class Company:
         return self._facts
     
     @property
-    def us_gaap(self) -> pd.DataFrame:
+    def us_gaap(self) -> dict:
         if self._us_gaap is None:
             us_gaap_json = self.facts['facts']['us-gaap']
             self._us_gaap = us_gaap_json
         return self._us_gaap
         
+    @property
+    def filings(self) -> pd.DataFrame:
+        if self._filings is None:
+            filings = {}
+            for value in self.us_gaap.values():
+                key = value['label']
+                unit = list(value['units'].keys())[0]
+
+                for file in value['units'][unit]:
+                    name = f"{file.get('form')}_{file.get('fp')}_{file.get('fy')}"
+                    filings.setdefault(name, {})[key] = {
+                        'value': file.get('val'), 
+                        'unit': unit
+                    }
+
+            self._filings = pd.DataFrame(filings)
+        return self._filings
 
