@@ -1,14 +1,11 @@
 import os
-import json
-import sec_API as sec
+import finance_tools
+from edgar import *
 
-#Create edgar downloader
-edgar = sec.Edgar(user_agent=os.environ.get('sec-user-agent'))
+set_identity(os.environ.get('sec-user-agent'))
 
-ticker = input("Enter ticker symbol: ")
+company = Company("AMD")
 
-comp = edgar.get_compnay_by_ticker(ticker)
+roe = f'{finance_tools.return_on_equity(company, "2023") * 100:.2f}%'
 
-filings_df = comp.filings
-
-filings_df.to_csv(f'temp/{comp.ticker}_filings.csv')
+print(roe)
