@@ -48,6 +48,18 @@ class Edgar:
 
         return response
     
+    def _get_company_submissions(self, company:'Company'):
+        cik = company.cik
+        url_extension = 'submissions/CIK'
+        endpoint = f'{self.base_url}{url_extension}{cik}.json'
+
+        response = requests.get(
+            endpoint,
+            headers=self.request_headers
+        ).json()
+        
+        return response
+    
 class Company:
     def __init__(self, edgar:'Edgar', ticker=None, cik=None, name=None) -> None:
         self.ticker = ticker
@@ -57,6 +69,7 @@ class Company:
         self._facts = None
         self._us_gaap = None
         self._financials = None
+        self._filings = None
 
     @property
     def facts(self):
@@ -93,3 +106,35 @@ class Company:
             self._financials = df_reversed_cols
         return self._financials
 
+    @property
+    def filings(self):
+        if self._filings is None:
+            submissions = self.edgar._get_company_submissions(self)
+
+            rfs = submissions['filings']['recent']
+
+            z = zip(
+                rfs['accessionNumber'],
+                rfs['filingDate'],
+                rfs['reportDate'],
+                rfs['form'],
+                rfs['items'],
+                rfs['isXBRL'],
+                rfs['primaryDocument']
+            )
+
+            filing_data = {
+                accn: {
+                    'filing_date': filing_date,
+                    'report_date': report_date,
+                    'form': form,
+                    'items': items,
+                    'is_XBRL': is_xbrl,
+                    'primary_document': primary_doc
+                }
+                for accn, filing_date, report_date, form, items, is_xbrl, primary_doc in z
+            }
+
+            self._filings = pd.DataFrame(filing_data).T
+
+        return self._filings
