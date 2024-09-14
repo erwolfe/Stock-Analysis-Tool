@@ -1,11 +1,13 @@
 import os
 import finance_tools
-from edgar import *
+import pandas as pd
+from sec_API import *
 
-set_identity(os.environ.get('sec-user-agent'))
+edgar = Edgar(os.environ.get('sec-user-agent'))
 
-company = Company("AMD")
+ticker = input("Enter the ticker you want: ")
+company = edgar.get_compnay_by_ticker(ticker)
 
-roe = f'{finance_tools.return_on_equity(company, "2023") * 100:.2f}%'
+roe = finance_tools.return_on_equity(company, 0)
 
-print(roe)
+print(f'{roe}')

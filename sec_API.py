@@ -56,7 +56,7 @@ class Company:
         self.edgar=edgar
         self._facts = None
         self._us_gaap = None
-        self._filings = None
+        self._financials = None
 
     @property
     def facts(self):
@@ -73,20 +73,23 @@ class Company:
         return self._us_gaap
         
     @property
-    def filings(self) -> pd.DataFrame:
-        if self._filings is None:
-            filings = {}
+    def financials(self) -> pd.DataFrame:
+        if self._financials is None:
+            financials = {}
             for value in self.us_gaap.values():
                 key = value['label']
                 unit = list(value['units'].keys())[0]
 
                 for file in value['units'][unit]:
                     name = f"{file.get('form')}_{file.get('fp')}_{file.get('fy')}"
-                    filings.setdefault(name, {})[key] = {
+                    financials.setdefault(name, {})[key] = {
                         'value': file.get('val'), 
                         'unit': unit
                     }
 
-            self._filings = pd.DataFrame(filings)
-        return self._filings
+            df = pd.DataFrame(financials)
+            df_reversed_cols = df[df.columns[::-1]]
+
+            self._financials = df_reversed_cols
+        return self._financials
 
