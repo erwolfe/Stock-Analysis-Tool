@@ -265,6 +265,8 @@ class FilingsList(list['Filing']):
         df['filing_date'] = pd.to_datetime(df['filing_date'])
         df['report_date'] = pd.to_datetime(df['report_date'])
 
+        df.drop(columns=['company', '_reports'], inplace=True)
+
         return df
 
 class Filing:
