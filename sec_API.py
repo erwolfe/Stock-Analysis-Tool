@@ -1,6 +1,7 @@
 import json
 import requests
 import pandas as pd
+from bs4 import BeautifulSoup
 from datetime import datetime
 from typing import Union, List
 
@@ -206,6 +207,7 @@ class Company:
 
             self._filings = FilingsList([
                 Filing(
+                    company=self,
                     accession=accn,
                     filing_date=filing_date,
                     report_date=report_date,
@@ -258,17 +260,17 @@ class FilingsList(list['Filing']):
         Returns:
             pd.DataFrame: List of filings formatted as a DataFrame
         """
-        df = pd.DataFrame([obj.__dict__ for obj in self])
+        df = pd.DataFrame([filing.__dict__ for filing in self])
 
         df['filing_date'] = pd.to_datetime(df['filing_date'])
         df['report_date'] = pd.to_datetime(df['report_date'])
 
-        return df#.set_index('accession')
+        return df
 
 class Filing:
     """Represents a single filing submitted by a company to the SEC, instance variable accession used as unique identifier
     """
-    def __init__(self, accession:str = None, filing_date:str = None, report_date:str = None, form:str = None, items:str = None, is_xbrl:str = None, primary_document:str = None) -> None:
+    def __init__(self, company:Company = None, accession:str = None, filing_date:str = None, report_date:str = None, form:str = None, items:str = None, is_xbrl:str = None, primary_document:str = None) -> None:
         """Initializes an instance fo the Filing class. Reccommended to not call directly, use Company.get_filings() to get a Company's Filings
 
         Args:
@@ -280,6 +282,7 @@ class Filing:
             is_xbrl (str, optional): Defaults to None.
             primary_document (str, optional): Defaults to None.
         """
+        self.company = company
         self.accession = accession
         self.filing_date = filing_date
         self.report_date = report_date
@@ -287,3 +290,51 @@ class Filing:
         self.items = items
         self.is_xbrl = is_xbrl
         self.primary_document = primary_document
+
+        self._reports = None
+
+    def get_reports(self) -> 'ReportsList':
+        if self._reports is None:
+            base_url = 'https://sec.gov/Archives/edgar/data/'
+            cik = self.company.cik
+            accession = str(self.accession).replace('-', '')
+            endpoint = f'{base_url}{cik}/{accession}/FilingSummary.xml'
+
+            filing_summary = requests.get(
+                endpoint,
+                headers = self.company.edgar.request_headers
+            ).content.decode('utf-8')
+
+            filing_summary = BeautifulSoup(filing_summary, 'lxml-xml')
+
+            reports = filing_summary.findAll('Report')
+
+            self._reports = ReportsList([
+                Report(
+                    html_filename=report.find('HtmlFileName').get_text(strip=True) if report.find('HtmlFileName') else None,
+                    long_name=report.find('LongName').get_text(strip=True) if report.find('LongName') else None,
+                    report_type=report.find('ReportType').get_text(strip=True) if report.find('ReportType') else None,
+                    short_name=report.find('ShortName').get_text(strip=True) if report.find('ShortName') else None,
+                    position=report.find('Position').get_text(strip=True) if report.find('Position') else None
+                )
+                for report in reports
+            ])
+
+        return self._reports
+
+class ReportsList(list['Report']):
+    def to_pandas(self):
+        df = pd.DataFrame([report.__dict__ for report in self])
+        df.set_index('short_name', inplace=True)
+        return df
+    
+class Report:
+    def __init__(self, html_filename:str = None, long_name:str = None, report_type:str = None, short_name:str = None, position = None) -> None:
+        self.html_filename = html_filename
+        self.long_name = long_name
+        self.report_type = report_type
+        self.short_name = short_name
+        try:
+            self.position = int(position)
+        except:
+            self.position = position

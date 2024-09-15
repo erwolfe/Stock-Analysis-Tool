@@ -10,6 +10,8 @@ edgar = Edgar(os.environ.get('sec-user-agent'))
 ticker = input("Enter the ticker you want: ")
 company = edgar.get_company_by_ticker(ticker)
 
-recent_tenQ_df = company.get_filings(form_type='10-Q').to_pandas()
+latest_tenQ = company.get_filings(form_type='10-Q')[0]
 
-print(recent_tenQ_df)
+reports = latest_tenQ.get_reports()
+
+print(reports.to_pandas())
