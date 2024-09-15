@@ -173,8 +173,8 @@ class Company:
             report_date_end:datetime = None,
             filing_date_start:datetime = None,
             filing_date_end:datetime = None,
-            is_xbrl:bool = None
-    ) -> pd.DataFrame:
+            is_xbrl:bool = None,
+    ) -> 'FilingsList':
         """Extract and filter specific forms from the Company's filings, based on several criteria. Omitting an arg applies no filters to that field.
 
         Args:
@@ -183,10 +183,10 @@ class Company:
             report_date_end (datetime, optional): Latest report_date date to include. Defaults to None.
             filing_date_start (datetime, optional): Earliest filing_date date to include. Defaults to None.
             filing_date_end (datetime, optional): Latest filing_date date to include. Defaults to None.
-            is_xbrl (bool, optional): Include only filings that are XBRL formatted?. Defaults to None.
+            is_xbrl (bool, optional): Include only filings that are XBRL formatted? Defaults to None.
 
         Returns:
-            pd.DataFrame: Dataframe containing only filings that match all filter criteria
+            FilingsList: List containing only Filings objects that match all filter criteria
         """
         # Get filings for the Company if they havent already been fetched.
         if self._filings is None:
@@ -204,25 +204,20 @@ class Company:
                 rfs['primaryDocument']
             )
 
-            filing_data = {
-                accn: {
-                    'filing_date': filing_date,
-                    'report_date': report_date,
-                    'form': form,
-                    'items': items,
-                    'is_XBRL': is_xbrl,
-                    'primary_document': primary_doc
-                }
+            self._filings = FilingsList([
+                Filing(
+                    accession=accn,
+                    filing_date=filing_date,
+                    report_date=report_date,
+                    form=form,
+                    items=items,
+                    is_xbrl=is_xbrl,
+                    primary_document=primary_doc
+                )
                 for accn, filing_date, report_date, form, items, is_xbrl, primary_doc in z
-            }
+            ])
 
-            filings_df = pd.DataFrame(filing_data).T
-            filings_df['filing_date'] = pd.to_datetime(filings_df['filing_date'])
-            filings_df['report_date'] = pd.to_datetime(filings_df['report_date'])
-
-            self._filings = filings_df
-
-        filings = self._filings
+        filings = self._filings.to_pandas()
 
         # Filter the filings according to criteria
         if form_type is not None:
@@ -243,6 +238,52 @@ class Company:
             filings = filings[filings['filing_date'] <= filing_date_end]
 
         if is_xbrl is not None:
-            filings = filings[filings['is_XBRL'] == is_xbrl]
+            filings = filings[filings['is_xbrl'] == is_xbrl]
+
+        filing_map = {filing.accession: filing for filing in self._filings}
+
+        filings = FilingsList([filing_map[accession] for accession in filings['accession']])
 
         return filings
+
+class FilingsList(list['Filing']):
+    """Inherits from python list to add pandas DataFrame conversion functionality
+
+    Args:
+        list (Filing): _description_
+    """
+    def to_pandas(self) -> pd.DataFrame:
+        """Converts a FilingsList object to a DataFrame representation of the data
+
+        Returns:
+            pd.DataFrame: List of filings formatted as a DataFrame
+        """
+        df = pd.DataFrame([obj.__dict__ for obj in self])
+
+        df['filing_date'] = pd.to_datetime(df['filing_date'])
+        df['report_date'] = pd.to_datetime(df['report_date'])
+
+        return df#.set_index('accession')
+
+class Filing:
+    """Represents a single filing submitted by a company to the SEC, instance variable accession used as unique identifier
+    """
+    def __init__(self, accession:str = None, filing_date:str = None, report_date:str = None, form:str = None, items:str = None, is_xbrl:str = None, primary_document:str = None) -> None:
+        """Initializes an instance fo the Filing class. Reccommended to not call directly, use Company.get_filings() to get a Company's Filings
+
+        Args:
+            accession (str, optional): Defaults to None.
+            filing_date (str, optional): Defaults to None.
+            report_date (str, optional): Defaults to None.
+            form (str, optional): Defaults to None.
+            items (str, optional): Defaults to None.
+            is_xbrl (str, optional): Defaults to None.
+            primary_document (str, optional): Defaults to None.
+        """
+        self.accession = accession
+        self.filing_date = filing_date
+        self.report_date = report_date
+        self.form = form
+        self.items = items
+        self.is_xbrl = is_xbrl
+        self.primary_document = primary_document
