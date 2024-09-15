@@ -165,14 +165,30 @@ class Company:
 
             self._financials = df_reversed_cols
         return self._financials
+    
+    def get_filings(
+            self,
+            form_type:Union[str, List[str]] = None,
+            report_date_start:datetime = None,
+            report_date_end:datetime = None,
+            filing_date_start:datetime = None,
+            filing_date_end:datetime = None,
+            is_xbrl:bool = None
+    ) -> pd.DataFrame:
+        """Extract and filter specific forms from the Company's filings, based on several criteria. Omitting an arg applies no filters to that field.
 
-    @property
-    def filings(self) -> pd.DataFrame:
-        """Extracts recent filings from the Company's fetched submissions
+        Args:
+            form_type (Union[str, List[str]], optional): Type of forms to include e.g. '10-K'. Defaults to None.
+            report_date_start (datetime, optional): Earliest report_date date to include. Defaults to None.
+            report_date_end (datetime, optional): Latest report_date date to include. Defaults to None.
+            filing_date_start (datetime, optional): Earliest filing_date date to include. Defaults to None.
+            filing_date_end (datetime, optional): Latest filing_date date to include. Defaults to None.
+            is_xbrl (bool, optional): Include only filings that are XBRL formatted?. Defaults to None.
 
         Returns:
-            pd.DataFrame: Accession number indexed dataframe with columns for key details
+            pd.DataFrame: Dataframe containing only filings that match all filter criteria
         """
+        # Get filings for the Company if they havent already been fetched.
         if self._filings is None:
             submissions = self.edgar._get_company_submissions(self)
 
@@ -206,32 +222,9 @@ class Company:
 
             self._filings = filings_df
 
-        return self._filings
-    
-    def get_forms(
-            self,
-            form_type:Union[str, List[str]] = None,
-            report_date_start:datetime = None,
-            report_date_end:datetime = None,
-            filing_date_start:datetime = None,
-            filing_date_end:datetime = None,
-            is_xbrl:bool = None
-    ) -> pd.DataFrame:
-        """Filter specific forms from the Company's filings, based on several criteria. Omitting an arg applies no filters to that field.
+        filings = self._filings
 
-        Args:
-            form_type (Union[str, List[str]], optional): Type of forms to include e.g. '10-K'. Defaults to None.
-            report_date_start (datetime, optional): Earliest report_date date to include. Defaults to None.
-            report_date_end (datetime, optional): Latest report_date date to include. Defaults to None.
-            filing_date_start (datetime, optional): Earliest filing_date date to include. Defaults to None.
-            filing_date_end (datetime, optional): Latest filing_date date to include. Defaults to None.
-            is_xbrl (bool, optional): Include only filings that are XBRL formatted?. Defaults to None.
-
-        Returns:
-            pd.DataFrame: Dataframe containing only filings that match all filter criteria
-        """
-        filings = self.filings
-
+        # Filter the filings according to criteria
         if form_type is not None:
             if isinstance(form_type, str):
                 form_type = [form_type]

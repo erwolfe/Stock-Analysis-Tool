@@ -9,7 +9,4 @@ edgar = Edgar(os.environ.get('sec-user-agent'))
 
 ticker = input("Enter the ticker you want: ")
 company = edgar.get_company_by_ticker(ticker)
-company.facts
-filings = company.get_forms(form_type='10-Q', report_date_end=datetime(2023, 12, 31))
-
-print(company.name)
+latest_tenQ = company.get_filings(form_type='10-Q').head(1)
