@@ -167,7 +167,7 @@ class Company:
             self._financials = df_reversed_cols
         return self._financials
     
-    def get_filings(
+    def filings(
             self,
             form_type:Union[str, List[str]] = None,
             report_date_start:datetime = None,
@@ -293,7 +293,7 @@ class Filing:
 
         self._reports = None
 
-    def get_reports(self) -> 'ReportsList':
+    def reports(self, report_name:Union[str, List[str]] = None) -> 'ReportsList':
         if self._reports is None:
             base_url = 'https://sec.gov/Archives/edgar/data/'
             cik = self.company.cik
@@ -319,8 +319,15 @@ class Filing:
                 )
                 for report in reports
             ])
+        
+        if report_name is not None:
+            reports = ReportsList([
+                report for report in self._reports if report.short_name in report_name
+            ])
+        else:
+            return self._reports
 
-        return self._reports
+        return reports
 
 class ReportsList(list['Report']):
     def to_pandas(self):
