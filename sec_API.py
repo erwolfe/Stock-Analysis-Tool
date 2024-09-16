@@ -99,6 +99,20 @@ class Edgar:
         
         return response
     
+    def _get_filing_reports(self, filing:'Filing') -> str:
+        base_url = 'https://sec.gov/Archives/edgar/data/'
+        cik = filing.company.cik
+        accession = str(filing.accession).replace('-', '')
+        endpoint = f'{base_url}{cik}/{accession}/FilingSummary.xml'
+
+        response_str = requests.get(
+            endpoint,
+            headers = self.request_headers
+        ).content.decode('utf-8')
+
+        return response_str
+
+    
 class Company:
     def __init__(self, edgar:'Edgar', ticker=None, cik=None, name=None) -> None:
         """Initializes an instance of the Company class. Not recommended to be called directly. Instead, use Edgar.get_company_by_ticker() to create a Company obejct.
@@ -272,7 +286,7 @@ class FilingsList(list['Filing']):
 class Filing:
     """Represents a single filing submitted by a company to the SEC, instance variable accession used as unique identifier
     """
-    def __init__(self, company:Company = None, accession:str = None, filing_date:str = None, report_date:str = None, form:str = None, items:str = None, is_xbrl:str = None, primary_document:str = None) -> None:
+    def __init__(self, company:Company, accession:str = None, filing_date:str = None, report_date:str = None, form:str = None, items:str = None, is_xbrl:str = None, primary_document:str = None) -> None:
         """Initializes an instance fo the Filing class. Reccommended to not call directly, use Company.get_filings() to get a Company's Filings
 
         Args:
@@ -297,15 +311,7 @@ class Filing:
 
     def reports(self, report_name:Union[str, List[str]] = None) -> 'ReportsList':
         if self._reports is None:
-            base_url = 'https://sec.gov/Archives/edgar/data/'
-            cik = self.company.cik
-            accession = str(self.accession).replace('-', '')
-            endpoint = f'{base_url}{cik}/{accession}/FilingSummary.xml'
-
-            filing_summary = requests.get(
-                endpoint,
-                headers = self.company.edgar.request_headers
-            ).content.decode('utf-8')
+            filing_summary = self.company.edgar._get_filing_reports(self)
 
             filing_summary = BeautifulSoup(filing_summary, 'lxml-xml')
 
