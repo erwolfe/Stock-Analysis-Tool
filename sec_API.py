@@ -1,6 +1,7 @@
 import json
 import requests
 import pandas as pd
+from io import StringIO
 from bs4 import BeautifulSoup
 from datetime import datetime
 from typing import Union, List
@@ -111,7 +112,19 @@ class Edgar:
         ).content.decode('utf-8')
 
         return response_str
+    
+    def _get_report_contents(self, report:'Report') -> str:
+        base_url = 'https://sec.gov/Archives/edgar/data/'
+        cik = report.filing.company.cik
+        accession = str(report.filing.accession).replace('-', '')
+        endpoint = f'{base_url}{cik}/{accession}/{report.html_filename}'
 
+        response_str = requests.get(
+            endpoint,
+            headers=self.request_headers
+        ).content.decode('utf-8')
+
+        return response_str
     
 class Company:
     def __init__(self, edgar:'Edgar', ticker=None, cik=None, name=None) -> None:
@@ -319,6 +332,7 @@ class Filing:
 
             self._reports = ReportsList([
                 Report(
+                    filing = self,
                     html_filename=report.find('HtmlFileName').get_text(strip=True) if report.find('HtmlFileName') else None,
                     long_name=report.find('LongName').get_text(strip=True) if report.find('LongName') else None,
                     report_type=report.find('ReportType').get_text(strip=True) if report.find('ReportType') else None,
@@ -344,7 +358,8 @@ class ReportsList(list['Report']):
         return df
     
 class Report:
-    def __init__(self, html_filename:str = None, long_name:str = None, report_type:str = None, short_name:str = None, position = None) -> None:
+    def __init__(self, filing:'Filing', html_filename:str = None, long_name:str = None, report_type:str = None, short_name:str = None, position = None) -> None:
+        self.filing = filing
         self.html_filename = html_filename
         self.long_name = long_name
         self.report_type = report_type
@@ -353,3 +368,14 @@ class Report:
             self.position = int(position)
         except:
             self.position = position
+
+    def get_data(self) -> pd.DataFrame:
+        report_contents = self.filing.company.edgar._get_report_contents(self)
+
+        report_contents = BeautifulSoup(report_contents, 'lxml-xml')
+        table = report_contents.find('table', class_ = 'report')
+
+        df = pd.read_html(StringIO(str(table)))[0]
+        df.set_index(df.columns[0], inplace=True)
+
+        return df

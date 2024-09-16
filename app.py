@@ -12,8 +12,13 @@ company = edgar.get_company_by_ticker(ticker)
 
 latest_tenQ = company.filings(form_type='10-Q')[0]
 
-reports_list = ['Condensed Consolidated Statements of Operations', 'Condensed Consolidated Balance Sheets', 'Condensed Consolidated Statements of Cash Flows']
+reports_list = ['Condensed Consolidated Statements of Operations']
+reports = latest_tenQ.reports(reports_list)
 
-reports = latest_tenQ.reports(report_name=reports_list)
+"""
+for report in reports:
+    report_df = report.get_data()
+    report_df.to_csv(f'temp/{company.ticker}_{report.short_name}.csv')"""
 
-print(reports.to_pandas())
+income_statement = reports[0]
+
